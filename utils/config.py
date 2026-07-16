@@ -96,8 +96,8 @@ class Settings:
 
     @property
     def llm_available(self) -> bool:
-        """True when we have a key and can therefore call Claude via Kintio."""
-        return bool(self.kintio_api_key)
+        """True when we have a key and can therefore call the LLM."""
+        return bool(self.llm_api_key)
 
     def sample_files(self) -> List[Path]:
         if not self.sample_data_dir.exists():
