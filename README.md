@@ -1,5 +1,7 @@
 # Insight Autopilot
 
+![Insight Autopilot Dashboard](assets/dashboard.png)
+
 An agentic Business Intelligence assistant that turns structured data into actionable insights. Upload any dataset (CSV, Excel, or SQL) and ask a plain-English question — Insight Autopilot will profile the data, create an analysis plan using an AI agent, automatically select and train the right ML model, explain predictions, score the confidence of every insight, and generate a stakeholder-ready report.
 
 **Tech Stack:** Python · Claude (Anthropic via Kintio) · scikit-learn · SciPy · Streamlit · Plotly · SQLite
