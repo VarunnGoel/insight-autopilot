@@ -50,17 +50,17 @@ def _load_dotenv() -> None:
 _load_dotenv()
 
 
-def _get_api_key() -> str:
-    """Read the LLM API key from env, or from Streamlit secrets if present."""
-    key = os.environ.get("LLM_API_KEY", "").strip()
-    if key:
-        return key
+def _get_config(key: str, default: str = "") -> str:
+    """Read config from env, or from Streamlit secrets if present."""
+    val = os.environ.get(key, "").strip()
+    if val:
+        return val
     try:
         import streamlit as st  # type: ignore
 
-        return str(st.secrets.get("LLM_API_KEY", "")).strip()
+        return str(st.secrets.get(key, "")).strip() or default
     except Exception:
-        return ""
+        return default
 
 
 @dataclass
@@ -68,12 +68,12 @@ class Settings:
     """Immutable-ish runtime settings for the whole application."""
 
     # --- LLM / API ---
-    llm_api_key: str = field(default_factory=_get_api_key)
+    llm_api_key: str = field(default_factory=lambda: _get_config("LLM_API_KEY"))
     llm_model: str = field(
-        default_factory=lambda: os.environ.get("LLM_MODEL", "your-preferred-model-here")
+        default_factory=lambda: _get_config("LLM_MODEL", "claude-3-5-sonnet-latest")
     )
     llm_base_url: str = field(
-        default_factory=lambda: os.environ.get("LLM_BASE_URL", "https://api.anthropic.com")
+        default_factory=lambda: _get_config("LLM_BASE_URL", "https://api.anthropic.com")
     )
     llm_timeout_seconds: int = 120
     llm_max_retries: int = 3
