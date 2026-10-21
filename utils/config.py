@@ -4,7 +4,7 @@ Loads settings from environment variables (optionally via a local .env file)
 and exposes a single ``settings`` object the rest of the app imports.
 
 Everything is centralised here so there is exactly one place to change the
-Claude model, tune confidence weights, or point the app at a different
+Gemini model, tune confidence weights, or point the app at a different
 sample-data directory.
 """
 
@@ -68,12 +68,12 @@ class Settings:
     """Immutable-ish runtime settings for the whole application."""
 
     # --- LLM / API ---
-    llm_api_key: str = field(default_factory=lambda: _get_config("LLM_API_KEY"))
-    llm_model: str = field(
-        default_factory=lambda: _get_config("LLM_MODEL", "claude-3-5-sonnet-latest")
+    llm_api_key: str = field(
+        default_factory=lambda: _get_config("GEMINI_API_KEY") or _get_config("GOOGLE_API_KEY"),
+        repr=False,
     )
-    llm_base_url: str = field(
-        default_factory=lambda: _get_config("LLM_BASE_URL", "https://api.anthropic.com")
+    llm_model: str = field(
+        default_factory=lambda: _get_config("GEMINI_MODEL", "gemini-3.8-flash")
     )
     llm_timeout_seconds: int = 120
     llm_max_retries: int = 3

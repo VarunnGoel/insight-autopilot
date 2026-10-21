@@ -47,7 +47,7 @@ def _coerce_datetimes(df: pd.DataFrame) -> pd.DataFrame:
     """Return a copy where obvious date-like object columns are parsed to datetime."""
     out = df.copy()
     for col in out.columns:
-        if out[col].dtype == object:
+        if pd.api.types.is_object_dtype(out[col]) or pd.api.types.is_string_dtype(out[col]):
             name = col.lower()
             if any(tok in name for tok in ("date", "time", "day", "month", "year")):
                 parsed = pd.to_datetime(out[col], errors="coerce")

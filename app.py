@@ -52,14 +52,14 @@ def _reset() -> None:
 def _sidebar() -> None:
     with st.sidebar:
         st.header("🔮 Insight Autopilot")
-        st.caption("Agentic BI assistant powered by Claude AI.")
+        st.caption("Agentic BI assistant powered by Gemini AI.")
 
         if settings.llm_available:
-            st.success(f"Claude connected · `{settings.claude_model}`")
+            st.success(f"Gemini key configured · `{settings.llm_model}`")
         else:
             st.warning(
-                "No `KINTIO_API_KEY` set — running in **offline mode** "
-                "(heuristic planner + template report). Add a key in `.env` "
+                "No `GEMINI_API_KEY` set — running in **offline mode** "
+                "(heuristic planner + template report). Add a key in Streamlit Secrets or `.env` "
                 "for AI-written plans and reports."
             )
 
@@ -225,7 +225,7 @@ def _stage_results() -> None:
     )
 
     st.title("Results")
-    planner = plan.get("planner", "claude")
+    planner = plan.get("planner", "gemini")
     st.caption(
         f"Problem type: **{plan['problem_type']}** · "
         f"Planner: **{planner}** · Analyses: {', '.join(plan['analyses_to_run'])}"
@@ -351,9 +351,8 @@ def _render_model_tab(model: dict, explanation: dict) -> None:
 def _render_report_tab(output: dict) -> None:
     report = output["report"]
     source = report.get("source", "template")
-    st.caption(
-        f"Report written by: **{'Claude AI' if source == 'claude' else 'offline template engine'}**"
-    )
+    author = {"gemini": "Gemini AI", "claude": "Claude AI"}.get(source, "offline template engine")
+    st.caption(f"Report written by: **{author}**")
     st.markdown(report["markdown"])
 
     html = render_html(

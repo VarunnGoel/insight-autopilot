@@ -2,7 +2,7 @@
 
 Given a dataset profile and a plain-English business question, this module
 produces a structured analysis plan (JSON) that drives the rest of the
-pipeline. Claude does the reasoning when a key is available; otherwise a
+pipeline. Gemini does the reasoning when a key is available; otherwise a
 deterministic heuristic planner keeps the whole app working offline.
 """
 
@@ -88,7 +88,7 @@ def generate_clarifying_questions(profile: Dict, question: str) -> List[Dict[str
                 f"Dataset profile:\n{json.dumps(_slim_profile(profile), indent=2)}\n\n"
                 f"Business question: {question}\n\nGenerate the clarifying questions."
             )
-            result = generate_json(prompt, system=CLARIFY_SYSTEM_PROMPT, max_tokens=512)
+            result = generate_json(prompt, system=CLARIFY_SYSTEM_PROMPT, max_tokens=2048)
             questions = result.get("questions", [])
             if isinstance(questions, list) and questions:
                 return questions[:3]
@@ -143,14 +143,14 @@ def run_planning_agent(
     """Produce a validated analysis plan dict."""
     if llm_is_available():
         try:
-            plan = _plan_with_claude(profile, question, answers)
+            plan = _plan_with_gemini(profile, question, answers)
             return _validate_and_repair_plan(plan, profile)
         except LLMError as exc:
-            log.warning("Claude planning failed, using heuristic planner: %s", exc)
+            log.warning("Gemini planning failed, using heuristic planner: %s", exc)
     return _heuristic_plan(profile, question)
 
 
-def _plan_with_claude(profile: Dict, question: str, answers: Dict[str, str]) -> Dict:
+def _plan_with_gemini(profile: Dict, question: str, answers: Dict[str, str]) -> Dict:
     prompt = (
         f"Dataset Profile:\n{json.dumps(_slim_profile(profile), indent=2)}\n\n"
         f"Business Question: {question}\n\n"
@@ -213,7 +213,7 @@ def _validate_and_repair_plan(plan: Dict, profile: Dict) -> Dict[str, Any]:
         "analyses_to_run": analyses or ["distribution_analysis"],
         "clarifying_notes": str(plan.get("clarifying_notes", "")),
         "reasoning": str(plan.get("reasoning", "")),
-        "planner": "claude",
+        "planner": "gemini",
     }
 
 

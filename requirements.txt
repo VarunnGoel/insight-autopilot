@@ -1,6 +1,6 @@
 # Insight Autopilot — dependencies (lean core, all free / pure-pip installable)
 # No xgboost / shap / statsmodels: everything here ships prebuilt wheels for
-# Python 3.9–3.13 and needs no compiler or API subscription.
+# Python 3.10+ and needs no compiler. Gemini requires an API key.
 
 streamlit>=1.32.0
 pandas>=2.0.0
@@ -8,7 +8,7 @@ numpy>=1.24.0
 scikit-learn>=1.3.0
 scipy>=1.10.0
 plotly>=5.18.0
-requests>=2.31.0          # Gemini REST client (no SDK / gRPC needed)
+google-genai>=2.32.0,<3   # Official Gemini SDK
 openpyxl>=3.1.0           # Excel reading
 python-dotenv>=1.0.0      # local .env loading
 markdown>=3.5             # nicer HTML report export (optional; has a fallback)
