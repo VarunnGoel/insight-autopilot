@@ -1,12 +1,12 @@
 # Insight Autopilot
 
-![Insight Autopilot Dashboard](assets/dashboard.png)
+![Insight Autopilot results with a Gemini-generated analysis plan and report](assets/dashboard.png)
 
 An agentic Business Intelligence assistant that turns structured data into actionable insights. Upload any dataset (CSV, Excel, or SQL) and ask a plain-English question — Insight Autopilot will profile the data, create an analysis plan using an AI agent, automatically select and train the right ML model, explain predictions, score the confidence of every insight, and generate a stakeholder-ready report.
 
 **Tech Stack:** Python · Gemini (Google REST API) · scikit-learn · SciPy · Streamlit · Plotly · SQLite
 
-This project uses the Gemini API for the planning and reporting agent tasks. It also supports running completely offline (using a deterministic heuristic planner and template report writer) if no API key is provided.
+This project uses **Gemini 3.5 Flash-Lite** through Google's REST API for planning and reporting. It also supports running completely offline (using a deterministic heuristic planner and template report writer) if no API key is provided.
 
 ---
 
@@ -43,17 +43,33 @@ pip install -r requirements.txt
 
 ### 2. API Configuration
 
-To use the Gemini-powered AI agent, you will need a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
+Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/apikey), then configure it using either of the local methods below.
+
+**Option A: `.env`**
 
 ```bash
 cp .env.example .env
 ```
-Open `.env` and configure your API key:
+Open `.env` and replace the API key placeholder:
 ```env
-GEMINI_API_KEY="your-api-key-here"
+GEMINI_API_KEY="your-gemini-api-key-here"
 GEMINI_MODEL="gemini-3.5-flash-lite"
 ```
-*(If no API key is provided, the app falls back to a completely offline, heuristic-based pipeline.)*
+
+**Option B: Streamlit secrets**
+
+Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and set:
+
+```toml
+GEMINI_API_KEY = "your-gemini-api-key-here"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+```
+
+`GEMINI_API_KEY` enables the AI planner and report writer. `GEMINI_MODEL` is optional; its default is `gemini-3.5-flash-lite`. The app also accepts `GOOGLE_API_KEY` when `GEMINI_API_KEY` is absent. Use one key source to keep configuration clear; environment variables take precedence over Streamlit secrets for the same setting.
+
+Both `.env` and `.streamlit/secrets.toml` are excluded from Git. Keep real API keys in those private files or Streamlit Cloud Secrets.
+
+If no key is configured, the app uses its offline planner and template report writer. It also falls back to these if a Gemini request fails.
 
 ### 3. Generate Demo Data (Optional)
 
@@ -72,7 +88,7 @@ streamlit run app.py
 
 ## Testing
 
-The test suite runs fully offline (no API key required) and covers ingestion, profiling, model selection, confidence scoring, storage, and the end-to-end pipeline.
+The test suite runs fully offline, even when a local API key is configured. It covers Gemini configuration and HTTP requests, ingestion, profiling, model selection, confidence scoring, storage, the Streamlit sidebar, and the end-to-end pipeline.
 
 ```bash
 pip install pytest
@@ -83,15 +99,21 @@ pytest -q
 
 ## Deployment (Streamlit Cloud)
 
-To deploy for free on Streamlit Cloud:
+For a new Streamlit Community Cloud deployment:
+
 1. Push this repository to GitHub.
-2. Go to **share.streamlit.io** → **New app** and point it to `app.py`.
+2. Go to **share.streamlit.io** → **Create app** and point it to `app.py`.
 3. In **Advanced settings**, select **Python 3.13** and add these **Secrets**:
    ```toml
-   GEMINI_API_KEY = "your-api-key-here"
+   GEMINI_API_KEY = "your-gemini-api-key-here"
    GEMINI_MODEL = "gemini-3.5-flash-lite"
    ```
-*(Note: Since Streamlit Cloud's free tier has an ephemeral filesystem, the SQLite session history will reset on redeployment, which the app handles gracefully.)*
+
+For an existing deployment, open **App settings → Secrets**, enter the same TOML, and click **Save changes**. Keep the two settings at the top level, above any `[section]`. Local secrets files are not uploaded through Git, so configure the deployed app's secrets separately.
+
+The sidebar displays **Gemini key configured** when the key is loaded. A successful AI run displays **Planner: gemini** and **Report written by: Gemini AI**; the sidebar alone does not verify an API request.
+
+Streamlit Cloud uses an ephemeral filesystem, so SQLite session history can reset on redeployment.
 
 ---
 

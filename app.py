@@ -351,7 +351,7 @@ def _render_model_tab(model: dict, explanation: dict) -> None:
 def _render_report_tab(output: dict) -> None:
     report = output["report"]
     source = report.get("source", "template")
-    author = {"gemini": "Gemini AI", "claude": "Claude AI"}.get(source, "offline template engine")
+    author = {"gemini": "Gemini AI", "template": "offline template engine"}.get(source, "AI")
     st.caption(f"Report written by: **{author}**")
     st.markdown(report["markdown"])
 

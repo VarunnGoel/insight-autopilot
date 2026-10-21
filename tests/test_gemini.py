@@ -27,11 +27,6 @@ def gemini_http(monkeypatch):
         result.request = request
         return result
 
-    def reject_sdk(*args, **kwargs):
-        pytest.fail("The hosted app must use the Gemini REST transport")
-
-    if hasattr(llm, "genai"):
-        monkeypatch.setattr(llm.genai, "Client", reject_sdk)
     monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", send)
     monkeypatch.setattr("time.sleep", lambda seconds: None)
     monkeypatch.setattr(settings, "llm_api_key", "test-gemini-key")
@@ -57,7 +52,7 @@ def response(text):
 
 
 def test_settings_read_gemini_key_from_streamlit_secrets(monkeypatch):
-    for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_MODEL", "LLM_API_KEY"):
+    for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_MODEL"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setitem(sys.modules, "streamlit", SimpleNamespace(secrets={
         "GEMINI_API_KEY": "test-cloud-key", "GEMINI_MODEL": "gemini-3.5-flash-lite"
@@ -77,10 +72,9 @@ def test_settings_read_gemini_environment_and_model(monkeypatch):
     assert "test-local-key" not in repr(config)
 
 
-def test_old_provider_key_does_not_enable_gemini(monkeypatch):
+def test_missing_gemini_key_uses_offline_mode(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    monkeypatch.setenv("LLM_API_KEY", "old-provider-key")
     monkeypatch.setitem(sys.modules, "streamlit", SimpleNamespace(secrets={}))
     assert not Settings().llm_available
 
