@@ -28,7 +28,7 @@ This project uses the Gemini API for the planning and reporting agent tasks. It 
 
 ### 1. Environment Setup
 
-Ensure you have Python 3.10 or newer installed. Create a virtual environment and install dependencies:
+Use Python 3.13 (recommended), or Python 3.10–3.12. Create a virtual environment and install dependencies:
 
 ```bash
 cd insight_autopilot
@@ -51,7 +51,7 @@ cp .env.example .env
 Open `.env` and configure your API key:
 ```env
 GEMINI_API_KEY="your-api-key-here"
-GEMINI_MODEL="gemini-3.8-flash"
+GEMINI_MODEL="gemini-3.5-flash-lite"
 ```
 *(If no API key is provided, the app falls back to a completely offline, heuristic-based pipeline.)*
 
@@ -86,10 +86,10 @@ pytest -q
 To deploy for free on Streamlit Cloud:
 1. Push this repository to GitHub.
 2. Go to **share.streamlit.io** → **New app** and point it to `app.py`.
-3. Go to **Advanced settings → Secrets** and add:
+3. In **Advanced settings**, select **Python 3.13** and add these **Secrets**:
    ```toml
    GEMINI_API_KEY = "your-api-key-here"
-   GEMINI_MODEL = "gemini-3.8-flash"
+   GEMINI_MODEL = "gemini-3.5-flash-lite"
    ```
 *(Note: Since Streamlit Cloud's free tier has an ephemeral filesystem, the SQLite session history will reset on redeployment, which the app handles gracefully.)*
 

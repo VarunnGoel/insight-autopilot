@@ -14,6 +14,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
+@pytest.fixture(autouse=True)
+def offline_llm(monkeypatch):
+    """Keep the suite offline even when a developer has a real Gemini key."""
+    from utils.config import settings
+
+    monkeypatch.setattr(settings, "llm_api_key", "")
+
+
 @pytest.fixture
 def churn_df() -> pd.DataFrame:
     path = ROOT / "data" / "sample_datasets" / "customer_churn.csv"

@@ -39,7 +39,7 @@ def gemini_http(monkeypatch):
     monkeypatch.setattr(genai, "Client", client)
     monkeypatch.setattr(requests, "post", reject_anthropic)
     monkeypatch.setattr(settings, "llm_api_key", "test-gemini-key")
-    monkeypatch.setattr(settings, "llm_model", "gemini-3.8-flash")
+    monkeypatch.setattr(settings, "llm_model", "gemini-3.5-flash-lite")
     return captured, responses
 
 
@@ -56,12 +56,12 @@ def test_settings_read_gemini_key_from_streamlit_secrets(monkeypatch):
     for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_MODEL", "LLM_API_KEY"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setitem(sys.modules, "streamlit", SimpleNamespace(secrets={
-        "GEMINI_API_KEY": "test-cloud-key", "GEMINI_MODEL": "gemini-3.8-flash"
+        "GEMINI_API_KEY": "test-cloud-key", "GEMINI_MODEL": "gemini-3.5-flash-lite"
     }))
     config = Settings()
     assert config.llm_available
     assert config.llm_api_key == "test-cloud-key"
-    assert config.llm_model == "gemini-3.8-flash"
+    assert config.llm_model == "gemini-3.5-flash-lite"
 
 
 def test_settings_read_gemini_environment_and_model(monkeypatch):
@@ -87,7 +87,7 @@ def test_text_request_authenticates_only_to_google(gemini_http):
     assert llm.generate_text("Summarize revenue", system="Be concise", max_tokens=8192) == "Gemini report"
     request = captured[0]
     assert request.url.host == "generativelanguage.googleapis.com"
-    assert request.url.path == "/v1beta/models/gemini-3.8-flash:generateContent"
+    assert request.url.path == "/v1beta/models/gemini-3.5-flash-lite:generateContent"
     assert request.headers["x-goog-api-key"] == "test-gemini-key"
     assert "test-gemini-key" not in str(request.url)
     payload = json.loads(request.content)

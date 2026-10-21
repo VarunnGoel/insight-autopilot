@@ -73,7 +73,7 @@ class Settings:
         repr=False,
     )
     llm_model: str = field(
-        default_factory=lambda: _get_config("GEMINI_MODEL", "gemini-3.8-flash")
+        default_factory=lambda: _get_config("GEMINI_MODEL", "gemini-3.5-flash-lite")
     )
     llm_timeout_seconds: int = 120
     llm_max_retries: int = 3

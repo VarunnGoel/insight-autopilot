@@ -1,6 +1,6 @@
 # Insight Autopilot — dependencies (lean core, all free / pure-pip installable)
 # No xgboost / shap / statsmodels: everything here ships prebuilt wheels for
-# Python 3.10+ and needs no compiler. Gemini requires an API key.
+# Python 3.10–3.13 and needs no compiler. Gemini requires an API key.
 
 streamlit>=1.32.0
 pandas>=2.0.0

@@ -76,8 +76,8 @@ def generate_text(
 ) -> str:
     """Return free-form text from Gemini, or raise ``LLMError``.
 
-    ``temperature`` is retained for existing callers. Gemini 3.8 uses its model
-    default; custom sampling parameters are deprecated for that model.
+    ``temperature`` is retained for existing callers. Gemini 3 models use their
+    default sampling settings, as recommended by Google.
     """
     return _generate_content(prompt, system, max_tokens)
 
