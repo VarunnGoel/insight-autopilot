@@ -4,7 +4,7 @@
 
 An agentic Business Intelligence assistant that turns structured data into actionable insights. Upload any dataset (CSV, Excel, or SQL) and ask a plain-English question — Insight Autopilot will profile the data, create an analysis plan using an AI agent, automatically select and train the right ML model, explain predictions, score the confidence of every insight, and generate a stakeholder-ready report.
 
-**Tech Stack:** Python · Gemini (Google GenAI SDK) · scikit-learn · SciPy · Streamlit · Plotly · SQLite
+**Tech Stack:** Python · Gemini (Google REST API) · scikit-learn · SciPy · Streamlit · Plotly · SQLite
 
 This project uses the Gemini API for the planning and reporting agent tasks. It also supports running completely offline (using a deterministic heuristic planner and template report writer) if no API key is provided.
 

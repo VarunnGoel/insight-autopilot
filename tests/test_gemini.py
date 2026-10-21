@@ -1,14 +1,12 @@
-"""Gemini configuration and real SDK requests, with HTTP kept offline."""
+"""Gemini configuration and real HTTP requests, with the network kept offline."""
 
 import json
 import sys
+from urllib.parse import urlsplit
 from types import SimpleNamespace
 
-import httpx
 import pytest
 import requests
-from google import genai
-from google.genai import types
 
 from core import agent, report_writer
 from utils import llm
@@ -17,34 +15,40 @@ from utils.config import Settings, settings
 
 @pytest.fixture
 def gemini_http(monkeypatch):
-    """Keep the SDK real; replace only its outbound HTTP transport."""
-    real_client = genai.Client
+    """Use real request preparation; replace only the network send."""
     captured = []
     responses = []
 
-    def handle(request):
+    def send(adapter, request, **kwargs):
+        if urlsplit(request.url).hostname != "generativelanguage.googleapis.com":
+            pytest.fail("The Gemini key must only be sent to Google's API")
         captured.append(request)
-        return responses.pop(0)
+        result = responses.pop(0)
+        result.request = request
+        return result
 
-    def client(*, api_key, http_options):
-        options = types.HttpOptions.model_validate(http_options)
-        options.client_args = {"transport": httpx.MockTransport(handle)}
-        options.retry_options.initial_delay = 0.001
-        options.retry_options.jitter = 0
-        return real_client(api_key=api_key, http_options=options)
+    def reject_sdk(*args, **kwargs):
+        pytest.fail("The hosted app must use the Gemini REST transport")
 
-    def reject_anthropic(*args, **kwargs):
-        pytest.fail("The Gemini key must never be sent to the Anthropic endpoint")
-
-    monkeypatch.setattr(genai, "Client", client)
-    monkeypatch.setattr(requests, "post", reject_anthropic)
+    if hasattr(llm, "genai"):
+        monkeypatch.setattr(llm.genai, "Client", reject_sdk)
+    monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", send)
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
     monkeypatch.setattr(settings, "llm_api_key", "test-gemini-key")
     monkeypatch.setattr(settings, "llm_model", "gemini-3.5-flash-lite")
     return captured, responses
 
 
+def api_response(status, data):
+    result = requests.Response()
+    result.status_code = status
+    result._content = json.dumps(data).encode()
+    result.headers["Content-Type"] = "application/json"
+    return result
+
+
 def response(text):
-    return httpx.Response(200, json={
+    return api_response(200, {
         "candidates": [{
             "content": {"role": "model", "parts": [{"text": text}]},
             "finishReason": "STOP",
@@ -86,11 +90,11 @@ def test_text_request_authenticates_only_to_google(gemini_http):
     responses.append(response("  Gemini report  "))
     assert llm.generate_text("Summarize revenue", system="Be concise", max_tokens=8192) == "Gemini report"
     request = captured[0]
-    assert request.url.host == "generativelanguage.googleapis.com"
-    assert request.url.path == "/v1beta/models/gemini-3.5-flash-lite:generateContent"
+    assert urlsplit(request.url).hostname == "generativelanguage.googleapis.com"
+    assert urlsplit(request.url).path == "/v1beta/models/gemini-3.5-flash-lite:generateContent"
     assert request.headers["x-goog-api-key"] == "test-gemini-key"
     assert "test-gemini-key" not in str(request.url)
-    payload = json.loads(request.content)
+    payload = json.loads(request.body)
     assert payload["contents"][0]["parts"][0]["text"] == "Summarize revenue"
     assert payload["systemInstruction"]["parts"][0]["text"] == "Be concise"
     assert payload["generationConfig"]["maxOutputTokens"] == 8192
@@ -101,13 +105,13 @@ def test_json_request_uses_json_output_mode(gemini_http):
     captured, responses = gemini_http
     responses.append(response('{"questions": [{"question": "Which region?"}]}'))
     assert llm.generate_json("Ask a question") == {"questions": [{"question": "Which region?"}]}
-    payload = json.loads(captured[0].content)
+    payload = json.loads(captured[0].body)
     assert payload["generationConfig"]["responseMimeType"] == "application/json"
 
 
 def test_invalid_key_becomes_llm_error_without_retrying(gemini_http):
     captured, responses = gemini_http
-    responses.append(httpx.Response(400, json={"error": {
+    responses.append(api_response(400, {"error": {
         "code": 400, "status": "INVALID_ARGUMENT", "message": "API key not valid"
     }}))
     with pytest.raises(llm.LLMError, match="Gemini"):
@@ -118,7 +122,7 @@ def test_invalid_key_becomes_llm_error_without_retrying(gemini_http):
 def test_temporary_api_failure_is_retried(gemini_http):
     captured, responses = gemini_http
     responses.extend([
-        httpx.Response(503, json={"error": {"code": 503, "message": "Unavailable"}}),
+        api_response(503, {"error": {"code": 503, "message": "Unavailable"}}),
         response("Recovered report"),
     ])
     assert llm.generate_text("Report") == "Recovered report"
@@ -127,7 +131,7 @@ def test_temporary_api_failure_is_retried(gemini_http):
 
 def test_empty_response_becomes_llm_error(gemini_http):
     _, responses = gemini_http
-    responses.append(httpx.Response(200, json={"candidates": []}))
+    responses.append(api_response(200, {"candidates": []}))
     with pytest.raises(llm.LLMError, match="empty|text"):
         llm.generate_text("Report")
 

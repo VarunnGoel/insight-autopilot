@@ -1,6 +1,6 @@
 """Gemini generation shared by the planner and report writer.
 
-Uses the official Google GenAI SDK. API errors become ``LLMError`` so callers
+Uses the official Gemini REST API through requests. API errors become ``LLMError`` so callers
 can continue using their existing offline fallbacks.
 """
 
@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from typing import Any, Dict, Optional
+from urllib.parse import quote
 
-import httpx
-from google import genai
-from google.genai import errors, types
+import requests
 
 from utils.config import settings
 
@@ -36,36 +36,64 @@ def _generate_content(
     if not llm_is_available():
         raise LLMError("No GEMINI_API_KEY configured in Streamlit Secrets or .env.")
 
-    try:
-        with genai.Client(
-            api_key=settings.llm_api_key,
-            http_options=types.HttpOptions(
-                timeout=settings.llm_timeout_seconds * 1000,
-                retry_options=types.HttpRetryOptions(
-                    attempts=settings.llm_max_retries,
-                    http_status_codes=[429, 500, 502, 503, 504],
-                ),
-            ),
-        ) as client:
-            response = client.models.generate_content(
-                model=settings.llm_model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system,
-                    max_output_tokens=max_tokens,
-                    response_mime_type="application/json" if json_output else None,
-                    thinking_config=types.ThinkingConfig(thinking_level="low"),
-                ),
-            )
-    except (errors.APIError, httpx.HTTPError, ValueError) as exc:
-        raise LLMError(f"Gemini API request failed: {exc}") from exc
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{quote(settings.llm_model, safe='')}:generateContent"
+    )
+    generation_config = {
+        "maxOutputTokens": max_tokens,
+        "thinkingConfig": {"thinkingLevel": "low"},
+    }
+    if json_output:
+        generation_config["responseMimeType"] = "application/json"
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": generation_config,
+    }
+    if system:
+        payload["systemInstruction"] = {"parts": [{"text": system}]}
 
-    if response.candidates and response.candidates[0].finish_reason == types.FinishReason.MAX_TOKENS:
-        raise LLMError("Gemini reached the output token limit; increase max_tokens.")
-    text = response.text
-    if not text or not text.strip():
-        raise LLMError("Gemini returned an empty text response.")
-    return text.strip()
+    for attempt in range(1, settings.llm_max_retries + 1):
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers={"x-goog-api-key": settings.llm_api_key},
+                timeout=settings.llm_timeout_seconds,
+                allow_redirects=False,
+            )
+        except requests.RequestException as exc:
+            if attempt == settings.llm_max_retries:
+                raise LLMError("Gemini API request failed after retries.") from exc
+            time.sleep(min(2 ** attempt, 15))
+            continue
+
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise LLMError("Gemini returned an invalid JSON response.") from exc
+        if not isinstance(data, dict):
+            raise LLMError("Gemini returned an unexpected response.")
+        if response.status_code != 200:
+            if response.status_code in (429, 500, 502, 503, 504) and attempt < settings.llm_max_retries:
+                time.sleep(min(2 ** attempt, 15))
+                continue
+            message = str(data.get("error", {}).get("message", "Request rejected"))
+            message = message.replace(settings.llm_api_key, "[key hidden]")
+            raise LLMError(f"Gemini API request failed (HTTP {response.status_code}): {message}")
+
+        candidates = data.get("candidates") or []
+        if not candidates:
+            raise LLMError("Gemini returned an empty text response.")
+        candidate = candidates[0]
+        if candidate.get("finishReason") == "MAX_TOKENS":
+            raise LLMError("Gemini reached the output token limit; increase max_tokens.")
+        parts = candidate.get("content", {}).get("parts", [])
+        text = "".join(part.get("text", "") for part in parts if not part.get("thought"))
+        if not text.strip():
+            raise LLMError("Gemini returned an empty text response.")
+        return text.strip()
+    raise LLMError("Gemini API request failed after retries.")
 
 
 def generate_text(
